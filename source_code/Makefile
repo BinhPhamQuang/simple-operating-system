@@ -30,7 +30,7 @@ mem: $(MEM_OBJ)
 
 # Just compile scheduler
 sched: $(SCHED_OBJ)
-	$(MAKE) $(LFLAGS) $(SCHED_OBJ) -o os $(LIB)
+	$(MAKE) $(LFLAGS) $(SCHED_OBJ) -o sched $(LIB)
 
 # Compile the whole OS simulation
 os: $(OS_OBJ)
