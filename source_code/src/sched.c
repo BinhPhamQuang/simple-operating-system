@@ -24,20 +24,21 @@ struct pcb_t * get_proc(void) {
 	 * [ready_queue] and return the highest priority one.
 	 * Remember to use lock to protect the queue.
 	 * */
-
 	if(ready_queue.size==0)
 	{
-		for (int i=0; i<run_queue.size;i++)
+		for (int i=0; i<MAX_QUEUE_SIZE;i++)
 		{
-			add_proc(run_queue.proc[i]);
-			run_queue.proc[i]=NULL;
-			run_queue.size--;
+			if(run_queue.proc[i]!=NULL)
+			{
+				add_proc(run_queue.proc[i]);
+				run_queue.proc[i]=NULL;
+				run_queue.size--;
+			}
 		}
 	}
 	pthread_mutex_lock(&queue_lock);
 	proc=dequeue(&ready_queue);
 	pthread_mutex_unlock(&queue_lock);
-	if(proc==NULL) return NULL;
 	//end todo
 	return proc;
 }
