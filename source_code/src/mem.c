@@ -49,10 +49,12 @@ static struct page_table_t * get_page_table(
 	 * field of the row is equal to the index
 	 *
 	 * */
-
 	int i;
 	for (i = 0; i < seg_table->size; i++) {
-		// Enter your code here
+		//TODO:
+		if(seg_table->table[i].v_index==index)
+		return &seg_table->table[i].pages;
+		//EndTODO
 	}
 	return NULL;
 
