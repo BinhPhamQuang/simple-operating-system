@@ -10,8 +10,8 @@
 #define SEGMENT_LEN	5
 #define PAGE_LEN	5
 
-#define NUM_PAGES	(1 << (ADDRESS_SIZE - OFFSET_LEN))
-#define PAGE_SIZE	(1 << OFFSET_LEN)
+#define NUM_PAGES	(1 << (ADDRESS_SIZE - OFFSET_LEN)) //32
+#define PAGE_SIZE	(1 << OFFSET_LEN) 
 
 typedef char BYTE;
 typedef uint32_t addr_t;
@@ -40,8 +40,8 @@ struct code_seg_t {
 struct page_table_t {
 	/* A row in the page table of the second layer */
 	struct  {
-		addr_t v_index; // The index of virtual address
-		addr_t p_index; // The index of physical address
+		addr_t v_index; // The index of virtual address (second lv)
+	 	addr_t p_index; // The index of physical address
 	} table[1 << SEGMENT_LEN];
 	int size;
 };
@@ -50,7 +50,7 @@ struct page_table_t {
 struct seg_table_t {
 	/* Translation table for the first layer */
 	struct {
-		addr_t v_index;	// Virtual index
+		addr_t v_index;	// Virtual index  (first lv)
 		struct page_table_t * pages;
 	} table[1 << PAGE_LEN];
 	int size;	// Number of row in the first layer

@@ -24,10 +24,11 @@ void init_mem(void)
 	memset(_ram, 0, sizeof(BYTE) * RAM_SIZE);
 	pthread_mutex_init(&mem_lock, NULL);
 }
-
+//    segment(5)|page index(5)|offset(10)
 /* get offset of the virtual address */
 static addr_t get_offset(addr_t addr)
 {
+	//0U= (usigned)0
 	return addr & ~((~0U) << OFFSET_LEN);
 }
 
@@ -116,8 +117,10 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc)
 	 * process [proc] and save the address of the first
 	 * byte in the allocated memory region to [ret_mem].
 	 * */
-	uint32_t num_pages = (size % PAGE_SIZE) ? size / PAGE_SIZE : size / PAGE_SIZE + 1; // Number of pages we will use
-	int mem_avail = 0;																   // We could allocate new memory region or not?
+	uint32_t num_pages = (size % PAGE_SIZE) ? size / PAGE_SIZE : size / PAGE_SIZE + 1; 
+	// Number of pages we will use
+	int mem_avail = 0;																  
+	 // We could allocate new memory region or not?
 
 	/* First we must check if the amount of free memory in
 	 * virtual address space and physical address space is
@@ -134,7 +137,7 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc)
 	for (int i=0;i<NUM_PAGES;i++)
 	{
 		if(_mem_stat[i].proc==0)
-		{	indexpage[physicalcount]=i;
+		{	indexpagefree[physicalcount]=i;
 			physicalcount+=1;
 		}
 	}
@@ -166,14 +169,35 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc)
 			_mem_stat[indexpagefree[i]].index=i;
 			if(i==num_pages-1)
 			{
+				// last page
 				_mem_stat[indexpagefree[i]].next=-1;
 			}
 			else
 			{
 				_mem_stat[indexpagefree[i]].next=indexpagefree[i+1];
 			}
+			addr_t addr= ret_mem+ (i<<OFFSET_LEN);
+			addr_t firstlv= get_first_lv(addr);
+			addr_t scdlv =get_second_lv(addr);
+			struct page_table_t *n ;
+			struct page_table_t *temp= get_page_table(firstlv,proc->seg_table);
+			if(!temp)
+			{
+				//page does not exist. create new
+				int size= proc->seg_table->size;
+				proc->seg_table->table[size].v_index=firstlv;
+				n=(struct page_table_t*)malloc(sizeof(struct page_table_t));
+				n->size=0;
+				proc->seg_table->table[size].pages=n;
+				proc->seg_table->size+=1;
+			}
+			n->table[n->size].v_index=scdlv;
+			n->table[n->size].p_index=indexpagefree[i];
+			n->size+=1;
+			
 			
 		}
+		//EndTODO
 	}
 	pthread_mutex_unlock(&mem_lock);
 	return ret_mem;
