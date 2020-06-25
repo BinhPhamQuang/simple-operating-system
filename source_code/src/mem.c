@@ -1,4 +1,5 @@
 
+//    segment(5)|page index(5)|offset(10)
 #include "mem.h"
 #include "stdlib.h"
 #include "string.h"
@@ -24,7 +25,7 @@ void init_mem(void)
 	memset(_ram, 0, sizeof(BYTE) * RAM_SIZE);
 	pthread_mutex_init(&mem_lock, NULL);
 }
-//    segment(5)|page index(5)|offset(10)
+
 /* get offset of the virtual address */
 static addr_t get_offset(addr_t addr)
 {
@@ -117,7 +118,7 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc)
 	 * process [proc] and save the address of the first
 	 * byte in the allocated memory region to [ret_mem].
 	 * */
-	uint32_t num_pages = (size % PAGE_SIZE) ? size / PAGE_SIZE+1 : size / PAGE_SIZE ;
+	uint32_t num_pages = (size % PAGE_SIZE) ? size / PAGE_SIZE + 1 : size / PAGE_SIZE;
 	// Number of pages we will use
 	int mem_avail = 0;
 	// We could allocate new memory region or not?
@@ -174,31 +175,29 @@ addr_t alloc_mem(uint32_t size, struct pcb_t *proc)
 			_mem_stat[indexpagefree[i]].index = i;
 			if (i == num_pages - 1)
 			{
-				// last page
+				// last page(allocate)
 				_mem_stat[indexpagefree[i]].next = -1;
 			}
 			else
 			{
 				_mem_stat[indexpagefree[i]].next = indexpagefree[i + 1];
 			}
-			addr_t addr = ret_mem + (i << OFFSET_LEN);
-			addr_t firstlv = get_first_lv(addr);
-			addr_t scdlv = get_second_lv(addr);
-			struct page_table_t *temp = get_page_table(firstlv, proc->seg_table);
-			if (!temp)
+			addr_t firstlv = get_first_lv(ret_mem);
+
+			struct page_table_t *page = get_page_table(firstlv, proc->seg_table);
+			if (page == NULL)
 			{
 				//page does not exist. create new
-
 				// gan first lv cho page moi
 				proc->seg_table->table[proc->seg_table->size].v_index = firstlv;
-				// allocate temp
-				temp = (struct page_table_t *)malloc(sizeof(struct page_table_t));
-				temp->size = 0;
-				proc->seg_table->table[proc->seg_table->size].pages = temp;
+				proc->seg_table->table[proc->seg_table->size].pages = malloc(sizeof(struct page_table_t));
+				proc->seg_table->table[proc->seg_table->size].pages->size = 0;
 				proc->seg_table->size += 1;
 			}
-			temp->table[temp->size].v_index = scdlv;
-			temp->table[temp->size].p_index = indexpagefree[i];
+			int size = proc->seg_table->table[proc->seg_table->size - 1].pages->size; //size of page
+			proc->seg_table->table[proc->seg_table->size - 1].pages->table[size].v_index = get_second_lv(ret_mem);
+			proc->seg_table->table[proc->seg_table->size - 1].pages->table[size].p_index = indexpagefree[i];
+			proc->seg_table->table[proc->seg_table->size - 1].pages->size += 1;
 		}
 		//EndTODO
 	}
@@ -219,27 +218,35 @@ int free_mem(addr_t address, struct pcb_t *proc)
 
 	pthread_mutex_lock(&mem_lock);
 	addr_t firstlv = get_first_lv(address);
-	struct page_table_t *temp = get_page_table(firstlv, proc->seg_table);
-	if (temp == NULL)
+	addr_t secondlv = get_second_lv(address);
+	struct page_table_t *page = get_page_table(firstlv, proc->seg_table);
+	if (page == NULL)
 	{
 		pthread_mutex_unlock(&mem_lock);
-		return 0;
+		return 1;
 	}
-	for (int i = 0; i < NUM_PAGES; i++)
+	for (int i = 0; i < proc->seg_table->size; i++)
 	{
-		if (_mem_stat[i].proc == proc->pid)
+		if (proc->seg_table->table[i].v_index == firstlv)
 		{
-			_mem_stat[i].proc = 0;
-			for (int j = 0; j < temp->size; j++)
+			for (int j = 0; j < proc->seg_table->table[i].pages->size; j++)
 			{
-				if (_mem_stat[i].index == temp->table[j].p_index)
-
-					for (int jj = j; jj < temp->size; jj++)
+				if (proc->seg_table->table[i].pages->table[j].v_index == secondlv)
+				{
+					int idx = proc->seg_table->table[i].pages->table[j].p_index;
+					while (idx != -1)
 					{
-						temp->table[jj] = temp->table[jj + 1];
+						_mem_stat[idx].proc = 0;
+						idx = _mem_stat[idx].next;
 					}
+					//delete index physical index in pagetable
+					for(int jj=j;jj< proc->seg_table->table[i].pages->size-1;jj++)
+					{
+						proc->seg_table->table[i].pages->table[jj]=proc->seg_table->table[i].pages->table[jj+1];
+					}
+					proc->seg_table->table[i].pages->size--;
+				}
 			}
-			temp->size -= 1;
 		}
 	}
 	pthread_mutex_unlock(&mem_lock);
