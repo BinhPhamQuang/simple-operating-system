@@ -28,12 +28,14 @@ struct pcb_t * get_proc(void) {
 	{
 		for (int i=0; i<MAX_QUEUE_SIZE;i++)
 		{
+			pthread_mutex_lock(&queue_lock);
 			if(run_queue.proc[i]!=NULL)
 			{
 				enqueue(&ready_queue, run_queue.proc[i]);
 				run_queue.proc[i]=NULL;
 				run_queue.size--;
 			}
+			pthread_mutex_unlock(&queue_lock);
 		}
 	}
 	pthread_mutex_lock(&queue_lock);
