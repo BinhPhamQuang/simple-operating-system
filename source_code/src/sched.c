@@ -30,7 +30,7 @@ struct pcb_t * get_proc(void) {
 		{
 			if(run_queue.proc[i]!=NULL)
 			{
-				add_proc(run_queue.proc[i]);
+				enqueue(&ready_queue, run_queue.proc[i]);
 				run_queue.proc[i]=NULL;
 				run_queue.size--;
 			}
